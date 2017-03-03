@@ -157,7 +157,7 @@ public abstract class AbstractJarMojo extends AbstractMojo {
                 archiver.getArchiver().addDirectory(contentDirectory, DEFAULT_INCLUDES, DEFAULT_EXCLUDES);
             }
 
-            archiver.createArchive(project, archive);
+            archiver.createArchive(null, project, archive);
 
             return jarFile;
         } catch (ArchiverException e) {

@@ -86,7 +86,7 @@ public class FixtureCompilerMojo extends AbstractCompilerMojo {
      * 
      * @parameter
      */
-    private Set< ? > testExcludes = new HashSet<Object>();
+    private Set<String> testExcludes = new HashSet<String>();
 
     @Override
     public void execute() throws MojoExecutionException, CompilationFailureException {

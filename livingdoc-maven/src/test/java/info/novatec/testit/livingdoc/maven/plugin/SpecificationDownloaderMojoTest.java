@@ -1,13 +1,10 @@
 package info.novatec.testit.livingdoc.maven.plugin;
 
-import static info.novatec.testit.livingdoc.util.CollectionUtil.toVector;
-
-import java.io.File;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Vector;
-
+import info.novatec.testit.livingdoc.repository.AtlassianRepository;
+import info.novatec.testit.livingdoc.repository.FileSystemRepository;
+import info.novatec.testit.livingdoc.server.LivingDocServerException;
+import info.novatec.testit.livingdoc.server.rest.RestClient;
+import info.novatec.testit.livingdoc.util.URIUtil;
 import org.apache.commons.io.FileUtils;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -17,13 +14,18 @@ import org.apache.xmlrpc.WebServer;
 import org.jmock.Mock;
 import org.jmock.core.Constraint;
 import org.jmock.core.constraint.IsEqual;
-import org.jmock.core.matcher.InvokeOnceMatcher;
-import org.jmock.core.stub.ReturnStub;
+import org.mockito.Mockito;
 
-import info.novatec.testit.livingdoc.repository.AtlassianRepository;
-import info.novatec.testit.livingdoc.repository.FileSystemRepository;
-import info.novatec.testit.livingdoc.util.URIUtil;
+import java.io.File;
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Vector;
 
+import static info.novatec.testit.livingdoc.util.CollectionUtil.toVector;
+import static org.mockito.Mockito.when;
 
 public class SpecificationDownloaderMojoTest extends AbstractMojoTestCase {
 
@@ -40,7 +42,7 @@ public class SpecificationDownloaderMojoTest extends AbstractMojoTestCase {
     public void setUp() throws Exception {
         super.setUp();
         URL pomPath = SpecificationDownloaderMojoTest.class.getResource("pom-downloader.xml");
-        mojo = ( SpecificationDownloaderMojo ) lookupMojo("freeze", URIUtil.decoded(pomPath.getPath()));
+        mojo = (SpecificationDownloaderMojo) lookupMojo("freeze", URIUtil.decoded(pomPath.getPath()));
 
         mojo.pluginDependencies = new ArrayList<Artifact>();
         mojo.pluginDependencies.add(new DependencyArtifact("commons-codec", dependency("commons-codec-1.3.jar")));
@@ -107,10 +109,6 @@ public class SpecificationDownloaderMojoTest extends AbstractMojoTestCase {
     @SuppressWarnings("unchecked")
     public void testShouldSupportCustomRepositoriesSuchAsAtlassian() throws Exception {
         startWebServer();
-        List< ? > expected = toVector("SPACE", "PAGE", Boolean.TRUE, Boolean.TRUE);
-        String right = FileUtils.readFileToString(spec("spec.html"), "UTF-8");
-        handler.expects(new InvokeOnceMatcher()).method("getRenderedSpecification").with(eq(""), eq(""), eq(expected)).will(
-            new ReturnStub(right));
 
         createAtlassianRepository("repo").addTest("PAGE");
         mojo.execute();
@@ -119,12 +117,25 @@ public class SpecificationDownloaderMojoTest extends AbstractMojoTestCase {
         assertDownloaded("repo", "PAGE.html");
     }
 
-    private Repository createAtlassianRepository(String name) {
-        Repository repository = new Repository();
+    private Repository createAtlassianRepository(String name) throws InvocationTargetException, ClassNotFoundException, InstantiationException, NoSuchMethodException, IllegalAccessException, IOException, LivingDocServerException {
+
+        RestClient restClient = Mockito.mock(RestClient.class);
+        AtlassianRepository atlassianRepository = Mockito.spy(new AtlassianRepository("http://localhost:19005/rpc/xmlrpc?includeStyle=true&handler=livingdoc1#SPACE"));
+
+        List<?> expected = toVector("SPACE", "PAGE", Boolean.TRUE, Boolean.TRUE);
+        String right = FileUtils.readFileToString(spec("spec.html"), "UTF-8");
+
+        when(restClient.getRenderedSpecification(expected)).thenReturn(right);
+        when(atlassianRepository.getRestClient()).thenReturn(restClient);
+
+        Repository repository = Mockito.spy(Repository.class);
         repository.setName(name);
         repository.setType(AtlassianRepository.class.getName());
         repository.setRoot("http://localhost:19005/rpc/xmlrpc?includeStyle=true&handler=livingdoc1#SPACE");
         mojo.addRepository(repository);
+
+        when(repository.getDocumentRepository()).thenReturn(atlassianRepository);
+
         return repository;
     }
 

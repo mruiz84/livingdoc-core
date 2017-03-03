@@ -66,7 +66,7 @@ public class AtlassianRepository implements DocumentRepository {
         return (List<Object>) getRestClient().listDocumentsInHierarchy(Collections.singletonList(root.getFragment()));
     }
 
-    protected RestClient getRestClient() {
+    public RestClient getRestClient() {
         if (this.restClient == null) {
 
             String url = root.getScheme() +

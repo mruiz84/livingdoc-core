@@ -276,7 +276,7 @@ public class SpecificationRunnerMojo extends AbstractMojo {
         System.out.println();
     }
 
-    private ClassLoader createClassLoader() throws MojoExecutionException {
+    protected ClassLoader createClassLoader() throws MojoExecutionException {
         List<URL> urls = new ArrayList<URL>();
         for (Iterator< ? > it = classpathElements.iterator(); it.hasNext();) {
             String s = ( String ) it.next();

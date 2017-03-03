@@ -222,7 +222,7 @@ public class FixtureResourcesMojo extends AbstractMojo {
                 // support @token@
                 reader = new InterpolationFilterReader(reader, filterProperties, "@", "@");
 
-                reader = new InterpolationFilterReader(reader, new ReflectionProperties(project), "${", "}");
+                reader = new InterpolationFilterReader(reader, new ReflectionProperties(project, false), "${", "}");
 
                 IOUtil.copy(reader, fileWriter);
             } finally {

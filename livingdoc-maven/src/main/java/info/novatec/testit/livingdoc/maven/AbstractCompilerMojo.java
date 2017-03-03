@@ -29,11 +29,8 @@ import java.util.Set;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.CompilationFailureException;
 import org.apache.maven.plugin.MojoExecutionException;
+import org.codehaus.plexus.compiler.*;
 import org.codehaus.plexus.compiler.Compiler;
-import org.codehaus.plexus.compiler.CompilerConfiguration;
-import org.codehaus.plexus.compiler.CompilerError;
-import org.codehaus.plexus.compiler.CompilerException;
-import org.codehaus.plexus.compiler.CompilerOutputStyle;
 import org.codehaus.plexus.compiler.manager.CompilerManager;
 import org.codehaus.plexus.compiler.manager.NoSuchCompilerException;
 import org.codehaus.plexus.compiler.util.scan.InclusionScanException;
@@ -274,7 +271,7 @@ public abstract class AbstractCompilerMojo extends AbstractMojo {
         compilerConfiguration.setSourceEncoding(encoding);
 
         if (compilerArguments != null) {
-            LinkedHashMap<String, Object> cplrArgsCopy = new LinkedHashMap<String, Object>();
+            LinkedHashMap cplrArgsCopy = new LinkedHashMap<String, String>();
             for (Iterator<Map.Entry> i = compilerArguments.entrySet().iterator(); i.hasNext();) {
                 Map.Entry me = i.next();
                 String key = ( String ) me.getKey();
@@ -300,7 +297,7 @@ public abstract class AbstractCompilerMojo extends AbstractMojo {
 
         compilerConfiguration.setOutputFileName(outputFileName);
 
-        Set<String> staleSources;
+        Set<File> staleSources;
 
         boolean canUpdateTarget;
 
@@ -314,7 +311,7 @@ public abstract class AbstractCompilerMojo extends AbstractMojo {
                 getLog().info("RESCANNING!");
                 String inputFileEnding = compiler.getInputFileEnding(compilerConfiguration);
 
-                Set<String> sources = computeStaleSources(compilerConfiguration, compiler, getSourceInclusionScanner(
+                Set<File> sources = computeStaleSources(compilerConfiguration, compiler, getSourceInclusionScanner(
                     inputFileEnding));
 
                 compilerConfiguration.setSourceFiles(sources);
@@ -375,18 +372,18 @@ public abstract class AbstractCompilerMojo extends AbstractMojo {
         // Compile!
         // ----------------------------------------------------------------------
 
-        List<CompilerError> messages;
+        CompilerResult messages;
 
         try {
-            messages = compiler.compile(compilerConfiguration);
+            messages = compiler.performCompile(compilerConfiguration);
         } catch (CompilerException e) {
             throw new MojoExecutionException("Fatal error compiling", e);
         }
 
         boolean compilationError = false;
 
-        for (Iterator<CompilerError> i = messages.iterator(); i.hasNext();) {
-            CompilerError message = i.next();
+        for (Iterator<CompilerMessage> i = messages.getCompilerMessages().iterator(); i.hasNext();) {
+            CompilerMessage message = i.next();
 
             if (message.isError()) {
                 compilationError = true;
@@ -394,17 +391,17 @@ public abstract class AbstractCompilerMojo extends AbstractMojo {
         }
 
         if (compilationError) {
-            throw new CompilationFailureException(messages);
+            throw new CompilationFailureException(messages.getCompilerMessages());
         }
-        for (Iterator<CompilerError> i = messages.iterator(); i.hasNext();) {
-            CompilerError message = i.next();
+        for (Iterator<CompilerMessage> i = messages.getCompilerMessages().iterator(); i.hasNext();) {
+            CompilerMessage message = i.next();
 
             getLog().warn(message.toString());
         }
     }
 
     @SuppressWarnings("unchecked")
-    private Set<String> computeStaleSources(CompilerConfiguration compilerConfiguration, Compiler compiler,
+    private Set<File> computeStaleSources(CompilerConfiguration compilerConfiguration, Compiler compiler,
         SourceInclusionScanner scanner) throws MojoExecutionException, CompilerException {
         CompilerOutputStyle outputStyle = compiler.getCompilerOutputStyle();
 
@@ -428,7 +425,7 @@ public abstract class AbstractCompilerMojo extends AbstractMojo {
 
         scanner.addSourceMapping(mapping);
 
-        Set<String> staleSources = new HashSet<String>();
+        Set<File> staleSources = new HashSet<File>();
 
         for (Iterator<String> it = getCompileSourceRoots().iterator(); it.hasNext();) {
             String sourceRoot = it.next();
